@@ -263,7 +263,7 @@ Then: `python training/train.py` or `python main.py`
 
 ---
 
-**Project Version:** 1.0  
+**Project Version:** 2.0  
 **Last Updated:** December 25, 2025  
 **Status:** ✅ Complete and Ready to Use
 

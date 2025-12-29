@@ -463,4 +463,4 @@ If you encounter issues:
 ---
 
 **Created**: December 2025  
-**Version**: 1.0
+**Version**: 2.0

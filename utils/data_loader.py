@@ -9,8 +9,10 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 from keras.utils import to_categorical
 
+from .config import IMG_SIZE
 
-def load_dataset(dataset_path, num_classes=43, img_size=30):
+
+def load_dataset(dataset_path, num_classes=43, img_size=IMG_SIZE):
     """
     Load images and labels from YOLO format dataset.
     
@@ -53,9 +55,9 @@ def load_dataset(dataset_path, num_classes=43, img_size=30):
                         class_id = int(line.split()[0])
                         
                         # Load and process image
-                        image = Image.open(os.path.join(images_path, image_file))
+                        image = Image.open(os.path.join(images_path, image_file)).convert('RGB')
                         image = image.resize((img_size, img_size))
-                        image = np.array(image)
+                        image = np.array(image).astype('float32') / 255.0
                         data.append(image)
                         labels.append(class_id)
                         

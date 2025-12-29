@@ -8,6 +8,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from keras.preprocessing.image import ImageDataGenerator
 
 # Add parent directory to path to import utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.data_loader import load_dataset, prepare_training_data
 from utils.model import create_model, compile_model
 from utils.classes import NUM_CLASSES
+from utils.config import BATCH_SIZE, EPOCHS, AUGMENTATION, AUGMENTATION_PARAMS, IMG_SIZE
 
 
 def main():
@@ -45,7 +47,7 @@ def main():
     print("\n" + "-" * 60)
     print("Loading dataset...")
     print("-" * 60)
-    data, labels = load_dataset(dataset_path, num_classes=NUM_CLASSES)
+    data, labels = load_dataset(dataset_path, num_classes=NUM_CLASSES, img_size=IMG_SIZE)
     
     if len(data) == 0:
         print("Error: No data loaded. Exiting.")
@@ -92,14 +94,28 @@ def main():
     print("\n" + "-" * 60)
     print("Training model...")
     print("-" * 60)
-    history = model.fit(
-        X_train, y_train,
-        batch_size=32,
-        epochs=15,
-        validation_data=(X_test, y_test),
-        callbacks=[early_stopping, reduce_lr],
-        verbose=1
-    )
+    if AUGMENTATION:
+        print("Using data augmentation for training.")
+        datagen = ImageDataGenerator(**AUGMENTATION_PARAMS)
+        datagen.fit(X_train)
+        steps_per_epoch = max(1, len(X_train) // BATCH_SIZE)
+        history = model.fit(
+            datagen.flow(X_train, y_train, batch_size=BATCH_SIZE),
+            steps_per_epoch=steps_per_epoch,
+            epochs=EPOCHS,
+            validation_data=(X_test, y_test),
+            callbacks=[early_stopping, reduce_lr],
+            verbose=1
+        )
+    else:
+        history = model.fit(
+            X_train, y_train,
+            batch_size=BATCH_SIZE,
+            epochs=EPOCHS,
+            validation_data=(X_test, y_test),
+            callbacks=[early_stopping, reduce_lr],
+            verbose=1
+        )
     
     # Save model
     print("\n" + "-" * 60)

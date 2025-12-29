@@ -271,6 +271,6 @@ Your project is now:
 
 ---
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Date:** December 25, 2025  
 **Status:** ✅ Ready to Use

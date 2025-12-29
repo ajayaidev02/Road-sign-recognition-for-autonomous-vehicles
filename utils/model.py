@@ -5,9 +5,10 @@ Defines the CNN model structure and provides functions for model management.
 
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout
+from .config import IMG_SIZE
 
 
-def create_model(num_classes=43):
+def create_model(num_classes=43, input_shape=(30, 30, 3)):
     """
     Create a CNN model for traffic sign classification.
     
@@ -21,7 +22,7 @@ def create_model(num_classes=43):
     
     # First convolutional block
     model.add(Conv2D(filters=32, kernel_size=(5, 5), activation='relu', 
-                     input_shape=(30, 30, 3)))
+                     input_shape=input_shape))
     model.add(Conv2D(filters=32, kernel_size=(5, 5), activation='relu'))
     model.add(MaxPool2D(pool_size=(2, 2)))
     model.add(Dropout(rate=0.25))
