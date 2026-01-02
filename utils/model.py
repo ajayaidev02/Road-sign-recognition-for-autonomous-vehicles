@@ -5,6 +5,8 @@ Defines the CNN model structure and provides functions for model management.
 
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout
+import tensorflow as tf
+import os
 from .config import IMG_SIZE, USE_TRANSFER_LEARNING, INPUT_SHAPE, LEARNING_RATE, FINE_TUNE_AT
 
 if USE_TRANSFER_LEARNING:
@@ -70,3 +72,26 @@ def compile_model(model, loss='categorical_crossentropy', optimizer='adam', metr
     """
     model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
     return model
+
+
+def export_model(model, export_dir, save_savedmodel=True, tflite_path=None):
+    """Export a Keras model to SavedModel and/or TFLite.
+
+    Args:
+        model: Keras model instance
+        export_dir: directory path to save SavedModel (if save_savedmodel=True)
+        save_savedmodel: whether to save SavedModel format
+        tflite_path: filepath to write TFLite model (optional)
+    """
+    if save_savedmodel:
+        os.makedirs(export_dir, exist_ok=True)
+        model.save(export_dir, save_format='tf')
+
+    if tflite_path:
+        try:
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            tflite_model = converter.convert()
+            with open(tflite_path, 'wb') as f:
+                f.write(tflite_model)
+        except Exception as e:
+            raise RuntimeError(f"TFLite conversion failed: {e}")

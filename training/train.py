@@ -5,9 +5,12 @@ Run this script separately to train the model and save it to the models/ folder.
 
 import os
 import sys
+import argparse
+import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+import tensorflow as tf
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard
 from keras.preprocessing.image import ImageDataGenerator
 
 # Add parent directory to path to import utils
@@ -19,13 +22,13 @@ from utils.classes import NUM_CLASSES
 from utils.config import BATCH_SIZE, EPOCHS, AUGMENTATION, AUGMENTATION_PARAMS, IMG_SIZE, INPUT_SHAPE, USE_TRANSFER_LEARNING, LEARNING_RATE, FINE_TUNE_AT
 
 
-def main():
+def main(args):
     """Main training function."""
     
     # Get paths
     current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_path = os.path.join(current_dir, 'dataset', 'train')
-    models_dir = os.path.join(current_dir, 'models')
+    dataset_path = args.dataset if args.dataset else os.path.join(current_dir, 'dataset', 'train')
+    models_dir = args.models_dir if args.models_dir else os.path.join(current_dir, 'models')
     
     print("=" * 60)
     print("Road Sign Recognition - Training Script")
@@ -94,31 +97,56 @@ def main():
         min_lr=1e-7,
         verbose=1
     )
+
+    # ModelCheckpoint and TensorBoard
+    timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    checkpoint_path = os.path.join(models_dir, f'traffic_sign_best_{timestamp}.h5')
+    checkpoint_cb = ModelCheckpoint(
+        checkpoint_path,
+        monitor='val_loss',
+        save_best_only=True,
+        save_weights_only=False,
+        verbose=1
+    )
+
+    logs_dir = os.path.join(current_dir, 'outputs', 'logs', timestamp)
+    os.makedirs(logs_dir, exist_ok=True)
+    tensorboard_cb = TensorBoard(log_dir=logs_dir)
     
     # Train model
     print("\n" + "-" * 60)
     print("Training model...")
     print("-" * 60)
+    if args.batch_size:
+        batch_size = args.batch_size
+    else:
+        batch_size = BATCH_SIZE
+
+    if args.epochs:
+        epochs = args.epochs
+    else:
+        epochs = EPOCHS
+
     if AUGMENTATION:
         print("Using data augmentation for training.")
         datagen = ImageDataGenerator(**AUGMENTATION_PARAMS)
         datagen.fit(X_train)
-        steps_per_epoch = max(1, len(X_train) // BATCH_SIZE)
+        steps_per_epoch = max(1, len(X_train) // batch_size)
         history = model.fit(
-            datagen.flow(X_train, y_train, batch_size=BATCH_SIZE),
+            datagen.flow(X_train, y_train, batch_size=batch_size),
             steps_per_epoch=steps_per_epoch,
-            epochs=EPOCHS,
+            epochs=epochs,
             validation_data=(X_test, y_test),
-            callbacks=[early_stopping, reduce_lr],
+            callbacks=[early_stopping, reduce_lr, checkpoint_cb, tensorboard_cb],
             verbose=1
         )
     else:
         history = model.fit(
             X_train, y_train,
-            batch_size=BATCH_SIZE,
-            epochs=EPOCHS,
+            batch_size=batch_size,
+            epochs=epochs,
             validation_data=(X_test, y_test),
-            callbacks=[early_stopping, reduce_lr],
+            callbacks=[early_stopping, reduce_lr, checkpoint_cb, tensorboard_cb],
             verbose=1
         )
     
@@ -126,9 +154,28 @@ def main():
     print("\n" + "-" * 60)
     print("Saving model...")
     print("-" * 60)
-    model_path = os.path.join(models_dir, 'traffic_sign_model.h5')
+    # Save HDF5
+    model_path = os.path.join(models_dir, f'traffic_sign_model_{timestamp}.h5')
     model.save(model_path)
     print(f"Model saved to: {model_path}")
+
+    # Optionally export SavedModel format
+    if args.export_savedmodel:
+        saved_model_dir = os.path.join(models_dir, f'traffic_sign_savedmodel_{timestamp}')
+        model.save(saved_model_dir, save_format='tf')
+        print(f"SavedModel exported to: {saved_model_dir}")
+
+    # Optionally export TFLite
+    if args.export_tflite:
+        try:
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            tflite_model = converter.convert()
+            tflite_path = os.path.join(models_dir, f'traffic_sign_{timestamp}.tflite')
+            with open(tflite_path, 'wb') as f:
+                f.write(tflite_model)
+            print(f"TFLite model saved to: {tflite_path}")
+        except Exception as e:
+            print(f"Warning: TFLite conversion failed: {e}")
     
     # Create outputs directory for graphs
     outputs_dir = os.path.join(current_dir, 'outputs')
@@ -176,4 +223,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Train traffic sign recognition model')
+    parser.add_argument('--dataset', type=str, help='Path to dataset folder (images + labels)')
+    parser.add_argument('--models-dir', type=str, help='Directory to save trained models')
+    parser.add_argument('--batch-size', type=int, help='Batch size to use for training')
+    parser.add_argument('--epochs', type=int, help='Number of training epochs')
+    parser.add_argument('--export-savedmodel', action='store_true', help='Also export SavedModel format')
+    parser.add_argument('--export-tflite', action='store_true', help='Also export TFLite model')
+    args = parser.parse_args()
+    main(args)
