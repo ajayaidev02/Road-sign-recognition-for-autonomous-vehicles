@@ -4,7 +4,7 @@ Defines the CNN model structure and provides functions for model management.
 """
 
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout
+from keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout, BatchNormalization
 import tensorflow as tf
 import os
 from .config import IMG_SIZE, USE_TRANSFER_LEARNING, INPUT_SHAPE, LEARNING_RATE, FINE_TUNE_AT
@@ -16,23 +16,69 @@ if USE_TRANSFER_LEARNING:
         create_transfer_model = None
 
 
-def create_model(num_classes=43, input_shape=None):
-    """Create a model. If transfer learning is enabled, return a pretrained backbone model.
+def create_high_capacity_cnn(num_classes=43, input_shape=None):
+    """Create a higher-capacity CNN suitable for more complex classification tasks.
 
-    Args:
-        num_classes: Number of output classes
-        input_shape: Optional input shape override
-
-    Returns:
-        model: Uncompiled/compiled Keras model depending on branch
+    This model increases depth and filters compared to the default small CNN.
     """
     if input_shape is None:
         input_shape = INPUT_SHAPE
 
-    if USE_TRANSFER_LEARNING and create_transfer_model is not None:
+    model = Sequential()
+
+    # Block 1
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=input_shape))
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPool2D((2, 2)))
+    model.add(Dropout(0.25))
+
+    # Block 2
+    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPool2D((2, 2)))
+    model.add(Dropout(0.35))
+
+    # Block 3
+    model.add(Conv2D(256, (3, 3), activation='relu', padding='same'))
+    model.add(Conv2D(256, (3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPool2D((2, 2)))
+    model.add(Dropout(0.4))
+
+    # Fully connected head
+    model.add(Flatten())
+    model.add(Dense(512, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(num_classes, activation='softmax'))
+
+    return model
+
+
+def create_model(num_classes=43, input_shape=None, model_type='auto'):
+    """Create a model factory that returns different architectures.
+
+    Args:
+        num_classes: Number of output classes
+        input_shape: Optional input shape override
+        model_type: 'auto'|'small'|'high'|'transfer' - selects architecture
+
+    Returns:
+        model: Uncompiled Keras model or compiled transfer model
+    """
+    if input_shape is None:
+        input_shape = INPUT_SHAPE
+
+    # If transfer learning requested and available, prefer it when model_type == 'auto' or 'transfer'
+    if model_type in ('auto', 'transfer') and USE_TRANSFER_LEARNING and create_transfer_model is not None:
         return create_transfer_model(num_classes=num_classes, input_shape=input_shape,
                                      learning_rate=LEARNING_RATE, fine_tune_at=FINE_TUNE_AT)
 
+    if model_type == 'high':
+        return create_high_capacity_cnn(num_classes=num_classes, input_shape=input_shape)
+
+    # default/small model (original)
     model = Sequential()
 
     # First convolutional block

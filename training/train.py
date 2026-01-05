@@ -72,12 +72,11 @@ def main(args):
     print("\n" + "-" * 60)
     print("Creating and compiling model...")
     print("-" * 60)
-    model = create_model(num_classes=NUM_CLASSES, input_shape=INPUT_SHAPE)
+    model_type = args.model_type if hasattr(args, 'model_type') and args.model_type else 'auto'
+    model = create_model(num_classes=NUM_CLASSES, input_shape=INPUT_SHAPE, model_type=model_type)
     # create_model may already return a compiled transfer model; only compile if uncompiled
-    try:
-        # If model has attribute 'optimizer' set, assume compiled
-        _ = model.optimizer
-    except Exception:
+    # model.optimizer exists on Keras models but may be None if not compiled
+    if not hasattr(model, 'optimizer') or model.optimizer is None:
         model = compile_model(model)
     print("Model created successfully!")
     print(f"Total parameters: {model.count_params():,}")
@@ -230,5 +229,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', type=int, help='Number of training epochs')
     parser.add_argument('--export-savedmodel', action='store_true', help='Also export SavedModel format')
     parser.add_argument('--export-tflite', action='store_true', help='Also export TFLite model')
+    parser.add_argument('--model-type', type=str, choices=['auto', 'small', 'high', 'transfer'],
+                        help="Model architecture to use: 'auto' (default/transfer if enabled), 'small', 'high', or 'transfer'")
     args = parser.parse_args()
     main(args)
