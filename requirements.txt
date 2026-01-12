@@ -1,13 +1,24 @@
-tensorflow==2.13.0
-keras==2.13.1
-numpy==1.24.3
-scikit-learn>=1.0.0
-matplotlib>=3.5.0
-Pillow>=9.0.0
-PyQt5>=5.15.0
-protobuf==4.25.8
-typing-extensions==4.5.0
-grpcio==1.74.0
-tensorboard>=2.13.0
-tensorflow-estimator==2.13.0
-h5py>=2.9.0
+# Core CV/ML
+opencv-python
+ultralytics>=8.0.0
+torch
+torchvision
+timm
+onnx
+protobuf<4.0.0
+onnxruntime-gpu; platform_system == "Linux" or platform_system == "Windows"
+onnxruntime; platform_system == "Darwin"
+
+# LLM / transformers
+transformers
+accelerate
+sentencepiece
+
+# CLI / UI
+rich
+textual
+
+# Utilities
+numpy
+pydantic
+python-dotenv

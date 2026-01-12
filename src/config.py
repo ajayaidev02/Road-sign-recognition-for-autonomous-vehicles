@@ -1,0 +1,66 @@
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+
+def _get_device() -> str:
+    try:
+        import torch
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except ImportError:
+        return "cpu"
+
+
+@dataclass
+class DetectorConfig:
+    name: str = "yolov8n"  # options: yolov8n, yolov9c, efficientdet_d0, ssd_mobilenet_v3
+    conf_threshold: float = 0.35
+    iou_threshold: float = 0.45
+    device: str = field(default_factory=_get_device)  # auto-detect CUDA
+    max_det: int = 10
+    half_precision: bool = True
+    model_path: Optional[str] = None  # custom weights for Indian datasets
+
+
+@dataclass
+class ClassifierConfig:
+    name: str = "efficientnet_b4"  # options: resnet50, efficientnet_b4, mobilenet_v3_large, vit_b_16
+    num_classes: int = 120
+    device: str = field(default_factory=_get_device)  # auto-detect CUDA
+    half_precision: bool = False
+    model_path: Optional[str] = None
+    class_names: List[str] = field(default_factory=list)
+
+
+@dataclass
+class LLMConfig:
+    provider: str = "openai"  # or "huggingface"
+    model: str = "gpt-4.1-mini"  # or local LLaMA/phi
+    api_key_env: str = "LLM_API_KEY"
+    max_tokens: int = 160
+    temperature: float = 0.2
+    safety_bias: float = 0.25  # increase safety tone
+
+
+@dataclass
+class SafetyConfig:
+    alert_confidence: float = 0.4
+    critical_confidence: float = 0.25
+    fps_floor: float = 10.0
+    allow_manual_override: bool = True
+
+
+@dataclass
+class RuntimeConfig:
+    source: str = "0"  # webcam id or video path
+    resize: Optional[tuple[int, int]] = None  # (width, height)
+    show_preview: bool = False
+    max_frames: Optional[int] = None
+
+
+@dataclass
+class AppConfig:
+    detector: DetectorConfig = field(default_factory=DetectorConfig)
+    classifier: ClassifierConfig = field(default_factory=ClassifierConfig)
+    llm: LLMConfig = field(default_factory=LLMConfig)
+    safety: SafetyConfig = field(default_factory=SafetyConfig)
+    runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
