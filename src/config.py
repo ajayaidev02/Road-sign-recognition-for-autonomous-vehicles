@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 def _get_device() -> str:
@@ -47,14 +47,41 @@ class SafetyConfig:
     critical_confidence: float = 0.25
     fps_floor: float = 10.0
     allow_manual_override: bool = True
+    stable_frames: int = 3  # frames required before LLM/ADAS actions
+    risk_tier_high: float = 0.8
+    risk_tier_med: float = 0.6
+    risk_tier_warn: float = 0.4
+
+
+@dataclass
+class PreprocessConfig:
+    enable_clahe: bool = True
+    enable_blur: bool = True
+    blur_kernel: int = 3
+    enable_bilateral: bool = False
+    enable_sharpen: bool = True
+    enable_hsv_mask: bool = True
+    enable_adaptive_thresh: bool = False
+    enable_gamma: bool = False
+    gamma: float = 1.2
+    enable_dehaze: bool = False
+
+
+@dataclass
+class TrackingConfig:
+    iou_threshold: float = 0.5
+    max_age: int = 30
+    min_stable: int = 3
 
 
 @dataclass
 class RuntimeConfig:
     source: str = "0"  # webcam id or video path
-    resize: Optional[tuple[int, int]] = None  # (width, height)
+    resize: Optional[Tuple[int, int]] = None  # (width, height)
     show_preview: bool = False
     max_frames: Optional[int] = None
+    target_fps: float = 20.0
+    frame_queue: int = 5
 
 
 @dataclass
@@ -64,3 +91,5 @@ class AppConfig:
     llm: LLMConfig = field(default_factory=LLMConfig)
     safety: SafetyConfig = field(default_factory=SafetyConfig)
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
+    preprocess: PreprocessConfig = field(default_factory=PreprocessConfig)
+    tracking: TrackingConfig = field(default_factory=TrackingConfig)

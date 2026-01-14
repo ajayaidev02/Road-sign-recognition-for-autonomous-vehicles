@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 
@@ -8,6 +8,7 @@ class Detection:
     label: str
     confidence: float
     bbox: Tuple[int, int, int, int]  # x1, y1, x2, y2
+    track_id: Optional[int] = None
 
 
 @dataclass
@@ -26,3 +27,6 @@ class FrameResult:
     fps: float
     latency_ms: float
     degraded: bool = False
+    safety_tier: str = "unknown"
+    manual_override: bool = False
+    stage_latency: Optional[Dict[str, float]] = None

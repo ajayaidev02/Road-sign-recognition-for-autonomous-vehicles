@@ -15,7 +15,7 @@ class SafetyGuard:
     def __init__(self, cfg: SafetyConfig) -> None:
         self.cfg = cfg
 
-    def evaluate(self, fps: float, detection: Optional[Detection], classification: Optional[ClassificationResult]) -> SafetyState:
+    def evaluate(self, fps: float, detection: Optional[Detection], classification: Optional[ClassificationResult], manual_override: bool = False) -> SafetyState:
         degraded = False
         alert: Optional[str] = None
 
@@ -35,4 +35,4 @@ class SafetyGuard:
         elif classification and classification.confidence < self.cfg.alert_confidence:
             alert = "Low classification confidence"
 
-        return SafetyState(degraded=degraded, alert_message=alert, manual_override=self.cfg.allow_manual_override)
+        return SafetyState(degraded=degraded, alert_message=alert, manual_override=manual_override or not self.cfg.allow_manual_override)

@@ -4,7 +4,8 @@ from typing import Optional
 from .config import AppConfig
 from .pipeline import process_stream
 from .ui.dashboard import Dashboard
-from .utils.video_source import open_stream
+from .utils.video_source import FrameStream
+from .utils.controls import ControlListener, ControlState
 
 
 def parse_args() -> argparse.Namespace:
@@ -15,6 +16,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--classifier", default=None, help="Classifier name (resnet50, efficientnet_b4, mobilenet_v3_large, vit_b_16)")
     parser.add_argument("--max-frames", type=int, default=None, help="Stop after N frames")
     parser.add_argument("--no-preview", action="store_true", help="Disable preview rendering (TUI only)")
+    parser.add_argument("--target-fps", type=float, default=20.0, help="Target capture FPS with frame skipping")
+    parser.add_argument("--queue", type=int, default=5, help="Frame queue size for capture thread")
     return parser.parse_args()
 
 
@@ -29,6 +32,8 @@ def build_config(args: argparse.Namespace) -> AppConfig:
     cfg.runtime.source = args.source
     cfg.runtime.max_frames = args.max_frames
     cfg.runtime.show_preview = not args.no_preview
+    cfg.runtime.target_fps = args.target_fps
+    cfg.runtime.frame_queue = args.queue
     return cfg
 
 
@@ -36,19 +41,21 @@ def main():
     args = parse_args()
     cfg = build_config(args)
     dashboard = Dashboard()
-    frames = open_stream(cfg.runtime.source, cfg.runtime.resize)
+    controls = ControlState()
+    control_thread = ControlListener(controls)
+    control_thread.start()
+    stream = FrameStream(cfg.runtime.source, cfg.runtime.resize, max_queue=cfg.runtime.frame_queue, target_fps=cfg.runtime.target_fps).start()
 
     def limited_frames():
         try:
-            for idx, frame in frames:
-                if cfg.runtime.max_frames and idx >= cfg.runtime.max_frames:
-                    break
+            for idx, frame in stream.frames():
                 yield idx, frame
         finally:
-            pass  # frame cleanup happens in open_stream context
+            stream.stop()
+            control_thread.stop()
 
     try:
-        result_stream = process_stream(limited_frames(), cfg)
+        result_stream = process_stream(limited_frames(), cfg, controls)
         dashboard.run_live(result_stream)
     except KeyboardInterrupt:
         print("\nShutdown complete.")
@@ -56,6 +63,8 @@ def main():
         print(f"Fatal error: {e}")
         raise
     finally:
+        control_thread.stop()
+        stream.stop()
         print("Application closed.")
 
 
